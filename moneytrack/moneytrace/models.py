@@ -1,7 +1,9 @@
 import uuid
 from django.db import models
 import datetime
+from django.forms import ValidationError
 from django.utils import timezone
+from .validation import validate_transaction_type, validate_is_number
 # Create your models here.
 
 
@@ -24,24 +26,29 @@ class Transaction (models.Model):
         verbose_name='Transaction Date',
     )
     transactionType = models.CharField(
-        verbose_name='transaction_type', 
-        max_length=1, 
-        choices=TRANSACTION_TYPE
+        verbose_name='transaction_type',
+        max_length=1,
+        choices=TRANSACTION_TYPE,
+        validators=[validate_transaction_type]
     )
     valueDebet = models.FloatField(
-        db_column='value_debet', 
+        db_column='value_debet',
         verbose_name='Value Debet',
         default=0,
+        validators= [validate_is_number],
     )
     valueCredit = models.FloatField(
-        db_column='value_credit', 
+        db_column='value_credit',
         verbose_name='Value Credit',
         default=0,
+        validators= [validate_is_number],
     )
     sum_value = models.FloatField(
-        db_column='sum_value', 
+        db_column='sum_value',
         verbose_name='Sum Value',
         default=0,
+        validators= [validate_is_number],
     )
+
     def __str__(self) -> str:
         return f'You make transaction on {self.transactionDate} with expense Rp.{self.valueDebet} and income Rp.{self.valueCredit} with your current acct now is Rp.{self.sum_value}'
