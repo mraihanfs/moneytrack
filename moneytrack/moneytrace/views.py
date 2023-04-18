@@ -1,11 +1,10 @@
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, get_object_or_404
 from .models import Transaction
 from django.views.decorators.http import require_http_methods
 from django.views import View, generic
-from django.template.context_processors import csrf
-from django.utils import timezone
 from .validation import validate_transaction_type, validate_is_number
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
 # Create your views here.
 
 
@@ -40,13 +39,32 @@ class IndexView (generic.ListView):
     def get_queryset(self):
         return Transaction.objects.order_by('transaction_date')[-5]
 
-class TransactionView(View):
+class LoginView(View):
+    def post(self, req):
+        username = req.POST.get('username')
+        password = req.POST.get('password')
+        user = authenticate(req, username=username, password=password)
+        if user is not None:
+            req.session.set_expiry(1800)
+            return HttpResponse(login(req, user=user))
+        else:
+            return HttpResponse('Failed to login')
+
+class LogoutView(View):
+    def get(self, req):
+        return HttpResponse(logout(req))
+
+class TransactionView(LoginRequiredMixin, View):
+    raise_exception = True
+    permission_denied_message = "Anda belum login"
+
     def get(self, request):
         data = Transaction.objects.values_list().order_by('transactionDate')
         dataJson = []
         for d in data:
             dataJson.append({'id': d[0], 'description': d[1], 'transactionDate': d[2].strftime("%d %B %Y"),
                             'transactionType': d[3], 'valueDebet': d[4], 'valueCredit': d[5], 'sum_value': d[6]})
+        print(request.user)
         return JsonResponse(dataJson, safe=False)
     
     def post (self, req):

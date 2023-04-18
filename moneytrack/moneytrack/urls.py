@@ -21,5 +21,7 @@ app_name = 'moneytrace'
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('', views.TransactionView.as_view(), name='index'),
-    # path('', views.add_transaction_and_show, name='index'),
+    path('login', views.LoginView.as_view(), name='login'),
+    path('logout', views.LogoutView.as_view(), name='login'),
+
 ]
