@@ -5,6 +5,7 @@ from django.views import View, generic
 from .validation import validate_transaction_type, validate_is_number
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
+import json
 # Create your views here.
 
 
@@ -44,11 +45,19 @@ class LoginView(View):
         username = req.POST.get('username')
         password = req.POST.get('password')
         user = authenticate(req, username=username, password=password)
-        if user is not None:
-            req.session.set_expiry(1800)
-            return HttpResponse(login(req, user=user))
+        if user.is_authenticated:
+            return HttpResponse("User sedang login mohon menggunakan akun yang lain", status=403)
         else:
-            return HttpResponse('Failed to login')
+            if user is not None:
+                req.session.set_expiry(1800)
+                login(req, user=user)
+                response = {
+                    "status": "202",
+                    "message": "Berhasil Login"
+                }
+                return JsonResponse(response)
+            else:
+                return HttpResponse("Username atau password salah", status=403)
 
 class LogoutView(View):
     def get(self, req):
