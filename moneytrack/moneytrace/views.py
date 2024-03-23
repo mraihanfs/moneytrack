@@ -7,6 +7,10 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.sessions.models import Session
 from django.utils import timezone
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 # Create your views here.
 
 
@@ -63,11 +67,15 @@ class LoginView(View):
                     "status": 403,
                 }
                 return JsonResponse(response, status=403)
-            req.session.set_expiry(1800)
-            login(req, user=user)
+            # req.session.set_expiry(1800)
+            # login(req, user=user)
+            refresh = RefreshToken.for_user(user)
             response = {
                 "message": "Berhasil Login",
-                "status": 403,
+                "status": 202,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'first_name': user.first_name
             }
             return JsonResponse(response, status=202)
         else:
@@ -86,9 +94,8 @@ class LogoutView(View):
         return HttpResponse(logout(req))
 
 
-class TransactionView(LoginRequiredMixin, View):
-    raise_exception = True
-    permission_denied_message = "Anda belum login"
+class TransactionView(APIView):
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         data = Transaction.objects.values_list().order_by('transactionDate')
@@ -113,3 +120,13 @@ class TransactionView(LoginRequiredMixin, View):
             return HttpResponse(newTransaction.__str__)
         except Exception as e:
             return HttpResponse(f"Data gagal di save dengan error {e}")
+        
+class Home(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        print(request.user.first_name)
+        content = {'message': 'Hello, World!',
+                   'firstName': request.user.first_name}
+        return Response(content)
