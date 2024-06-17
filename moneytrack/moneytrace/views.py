@@ -11,6 +11,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.contrib.auth.models import Group
+
 # Create your views here.
 
 
@@ -129,4 +131,16 @@ class Home(APIView):
         print(request.user.first_name)
         content = {'message': 'Hello, World!',
                    'firstName': request.user.first_name}
+        return Response(content)
+    
+class GetDataUser(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        groups = Group.objects.filter(user=request.user)
+        role = str(groups[0])
+        content = {'rc': 'Sukses',
+                   'role': role
+                   }
         return Response(content)
