@@ -110,12 +110,12 @@ WSGI_APPLICATION = "moneytrack.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
+        "ENGINE": "django.db.backends.postgresql",
         "NAME": 'moneytrace',
-        'USER':'root',
-        'PASSWORD':'',
-        'PORT':'3306',
+        'USER': 'postgres',
+        'PASSWORD': 'B0gor',
         'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
