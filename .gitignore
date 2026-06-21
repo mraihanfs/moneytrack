@@ -1,4 +1,24 @@
-venv
-__pycache__
-node_modules
+# Python
+venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Node
+node_modules/
+
+# Local executables
 ngrok.exe
+
+# Ignore IDE files
+.vscode/
+
+# Django
+*.log
+*.pot
+db.sqlite3
+media/
+staticfiles/
+
+# Environment
+.env
