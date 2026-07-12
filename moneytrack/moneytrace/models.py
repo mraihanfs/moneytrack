@@ -19,20 +19,7 @@ class Transaction(TimeStampedModel):
     )
     
     description = models.CharField(max_length=255, blank=True)
-    
-    transaction_date = models.DateTimeField(
-        default=timezone.now,
-        db_column='transaction_date',
-        verbose_name='Transaction Date',
-    )
-    
-    transaction_type = models.CharField(
-        max_length=10, 
-        choices=TransactionType.choices,
-        verbose_name='Transaction Type',
-        default=TransactionType.EXPENSE
-    )
-    
+        
     amount = models.DecimalField(
         db_column='amount',
         verbose_name='Nominal',
@@ -43,17 +30,17 @@ class Transaction(TimeStampedModel):
     )
     
     class Meta:
-        ordering = ['-transaction_date']
+        ordering = ['-created_at']
         verbose_name = 'Transaction'
         verbose_name_plural = 'Transactions'
         indexes = [
-            models.Index(fields=['-transaction_date']),
+            models.Index(fields=['-created_at']),
         ]
 
     def __str__(self):
         return (
-            f'Transaction {self.pk} on {self.transaction_date:%Y-%m-%d} '
-            f'— amount: {self.amount}, type: {self.transaction_type}'
+            f'Transaction {self.pk} on {self.created_at:%Y-%m-%d} '
+            f'— amount: {self.amount}'
         )
         
 class Category(TimeStampedModel):

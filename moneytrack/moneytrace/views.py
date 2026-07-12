@@ -1,5 +1,5 @@
 from django.http import HttpResponse, JsonResponse
-from .models import Transaction
+from .models import Category, Transaction
 from django.views.decorators.http import require_http_methods
 from django.views import View, generic
 from .validation import validate_transaction_type, validate_is_number
@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.models import Group
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import MyTokenObtainPairSerializer
+from .serializers import MyTokenObtainPairSerializer, TransactionSerializer
 # Create your views here.
 
 
@@ -98,31 +98,38 @@ class LogoutView(View):
 
 
 class TransactionView(APIView):
-    permission_classes = (IsAuthenticated,)
+    # permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        data = Transaction.objects.values_list().order_by('transactionDate')
+        dataTransaction = Transaction.objects.select_related('category').order_by('created_at').filter(created_at__date=timezone.now().date())
         dataJson = []
-        for d in data:
-            dataJson.append({'id': d[0], 'description': d[1], 'transactionDate': d[2].strftime("%d %B %Y"),
-                            'transactionType': d[3], 'valueDebet': d[4], 'valueCredit': d[5], 'sum_value': d[6]})
+        for d in dataTransaction:
+            dataJson.append({'transactionDate': d.created_at.strftime("%d %B %Y"), 'description': d.description,
+                            'category': d.category.name, 'amount': d.amount})
         print(request.user)
         return JsonResponse(dataJson, safe=False)
 
     def post(self, req):
-        data = req.POST
+        
         try:
-            description = str(data['description'])
-            transactionType = str(data['transactionType'])
-            value = data['value']
-            value = debet_or_credit(transactionType, value)
-            sum_value = sum_of_transaction(value[0], value[1])
-            newTransaction = Transaction(description=description, transactionType=transactionType,
-                                         valueCredit=value[0], valueDebet=value[1], sum_value=sum_value)
-            newTransaction.save()
-            return HttpResponse(newTransaction.__str__)
+            print(f"Data yang diterima {req.data}")
+            serializer = TransactionSerializer(data=req.data)
+            if serializer.is_valid():
+                serializer.save()
+                return HttpResponse(serializer.instance.__str__)
+            return Response(serializer.errors, status=400)
         except Exception as e:
+            print (f"Data gagal di save dengan error {e}")
             return HttpResponse(f"Data gagal di save dengan error {e}")
+        
+        
+class CategoryView(APIView):
+    def get(self, request):
+        data = Category.objects.values_list().order_by('name').filter(is_active=True)
+        dataJson = []
+        for d in data:
+            dataJson.append({'id': d[0], 'name': d[3]})
+        return JsonResponse(dataJson, safe=False)
         
 class Home(APIView):
     authentication_classes = [JWTAuthentication]

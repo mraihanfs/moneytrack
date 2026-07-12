@@ -30,5 +30,7 @@ urlpatterns = [
     path('api/token/refresh/',
          jwt_views.TokenRefreshView.as_view(),
          name ='token_refresh'),
+    path('api/category/', views.CategoryView.as_view(), name='category-list'),
+    path('api/transaction/', views.TransactionView.as_view(), name='transaction-list'),
     # path('', include('app.urls')),
 ]
