@@ -3,15 +3,15 @@ from .models import Category, Transaction
 from django.views.decorators.http import require_http_methods
 from django.views import View, generic
 from .validation import validate_transaction_type, validate_is_number
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth import authenticate,  logout
 from django.contrib.sessions.models import Session
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.contrib.auth.models import Group
+from rest_framework_api_key.permissions import HasAPIKey
+from .core.permission import HasApiKeyWithName
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import MyTokenObtainPairSerializer, TransactionSerializer
 # Create your views here.
@@ -98,22 +98,26 @@ class LogoutView(View):
 
 
 class TransactionView(APIView):
-    # permission_classes = (IsAuthenticated,)
+    permission_classes = [HasApiKeyWithName]
 
     def get(self, request):
-        dataTransaction = Transaction.objects.select_related('category').order_by('created_at').filter(created_at__date=timezone.now().date())
-        dataJson = []
-        for d in dataTransaction:
-            dataJson.append({'transactionDate': d.created_at.strftime("%d %B %Y"), 'description': d.description,
-                            'category': d.category.name, 'amount': d.amount})
-        print(request.user)
-        return JsonResponse(dataJson, safe=False)
+        name = request.api_key_name
+        dataTransaction = Transaction.objects.select_related('category').order_by('created_at').filter(created_at__date=timezone.now().date(), user=name)
+        if dataTransaction != None and dataTransaction.exists():
+            dataJson = []
+            for d in dataTransaction:
+                dataJson.append({'transactionDate': d.created_at.strftime("%d %B %Y"), 'description': d.description,
+                                'category': d.category.name, 'amount': d.amount})
+            return JsonResponse(dataJson, safe=False)
+        return JsonResponse({"message": "Data tidak ditemukan dengan nama pengguna: " + name + ", Mohon menggunakan token yang sudah punya data atau membuat data baru dengan token ini"}, status=404)
 
     def post(self, req):
-        
         try:
-            print(f"Data yang diterima {req.data}")
-            serializer = TransactionSerializer(data=req.data)
+            name = req.api_key_name
+            obj = req.data.copy()
+            print(f"Data yang diterima dari {req.api_key_name}")
+            newdata = {**obj, 'user': name}
+            serializer = TransactionSerializer(data=newdata)
             if serializer.is_valid():
                 serializer.save()
                 return JsonResponse({
@@ -136,13 +140,12 @@ class CategoryView(APIView):
         return JsonResponse(dataJson, safe=False)
         
 class Home(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    ermission_classes = [HasApiKeyWithName]
 
     def get(self, request):
-        print(request.user.first_name)
+        print(request.api_key_name)
         content = {'message': 'Hello, World!',
-                   'firstName': request.user.first_name}
+                   'firstName': request.api_key_name}
         return Response(content)
     
 class MyTokenObtainPairView(TokenObtainPairView):

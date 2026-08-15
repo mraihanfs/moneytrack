@@ -29,6 +29,8 @@ class Transaction(TimeStampedModel):
         validators=[MinValueValidator(Decimal('0.00'))],
     )
     
+    user = models.CharField(max_length=255, verbose_name='User', blank=True)
+    
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Transaction'
