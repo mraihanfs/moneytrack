@@ -116,7 +116,11 @@ class TransactionView(APIView):
             serializer = TransactionSerializer(data=req.data)
             if serializer.is_valid():
                 serializer.save()
-                return HttpResponse(serializer.instance.__str__)
+                return JsonResponse({
+                    "status": "success",
+                    "message": "Transaction created successfully",
+                    "id": serializer.instance.id
+                }, status=201)
             return Response(serializer.errors, status=400)
         except Exception as e:
             print (f"Data gagal di save dengan error {e}")

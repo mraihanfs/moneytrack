@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import Transaction
 from .models import Category
+
 # Register your models here.
 def get_every_field(model):
     return [field.name for field in model._meta.fields]
