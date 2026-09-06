@@ -135,9 +135,7 @@ class CategoryView(APIView):
 class Home(APIView):
 
     def get(self, request):
-        logger.info(f"Accessing home page for API key: {request.api_key_name}")
-        content = {'message': 'Hello, World!',
-                   'firstName': request.api_key_name}
+        content = {'message': 'Hello, World!'}
         return Response(content)
     
 class MyTokenObtainPairView(TokenObtainPairView):
