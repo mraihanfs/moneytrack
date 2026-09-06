@@ -114,12 +114,14 @@ WSGI_APPLICATION = "moneytrack.wsgi.application"
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES = {
-    "default": 
-        dj_database_url.config(
-        default=os.environ.get('SUPABASE_DB_URL'),
-        conn_max_age=600, # Keeps connections open for 10 minutes for better performance
+    "default": dj_database_url.config(
+        default=(
+            os.environ.get('DATABASE_URL')
+            or os.environ.get('SUPABASE_DB_URL')
+        ),
+        conn_max_age=600,
         conn_health_checks=True,
-        ) 
+    )
 }
 
 
