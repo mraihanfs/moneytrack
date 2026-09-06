@@ -11,7 +11,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         return data
     
-class TransactionSerializer(serializers.ModelSerializer):
+class RequestTransactionSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='name'
@@ -20,3 +20,14 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = ['amount', 'description', 'category', 'user']
+        
+        
+class ResponseTransactionSerializer(serializers.ModelSerializer):
+    category = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='name'
+    )
+    
+    class Meta:
+        model = Transaction
+        fields = ['amount', 'description', 'category', 'user', 'created_at', 'amount']

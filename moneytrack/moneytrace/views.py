@@ -1,3 +1,5 @@
+import logging
+from datetime import timedelta
 from django.http import HttpResponse, JsonResponse
 from .models import Category, Transaction
 from django.views.decorators.http import require_http_methods
@@ -8,36 +10,15 @@ from django.contrib.sessions.models import Session
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_api_key.permissions import HasAPIKey
 from .core.permission import HasApiKeyWithName
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import MyTokenObtainPairSerializer, TransactionSerializer
+from .serializers import MyTokenObtainPairSerializer, RequestTransactionSerializer, ResponseTransactionSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+
+logger = logging.getLogger(__name__)
+
 # Create your views here.
 
-
-def debet_or_credit(transactionType, value):
-    validate_transaction_type(transactionType)
-    validate_is_number(value)
-    value = abs(float(value))
-    if transactionType == 'D':
-        return [0, value]
-    elif transactionType == 'C':
-        return [value, 0]
-
-
-def sum_of_transaction(valueCredit, valueDebet):
-    sumOfTransaction = valueCredit - valueDebet
-    try:
-        sum_value = Transaction.objects.latest('transactionDate').sum_value
-        sumOfTransaction = sum_value + sumOfTransaction
-    finally:
-        return sumOfTransaction
-
-
-def get_every_field(model):
-    return [field.name for field in model._meta.fields]
 
 
 def check_if_account_had_session(user):
@@ -70,8 +51,6 @@ class LoginView(View):
                     "status": 403,
                 }
                 return JsonResponse(response, status=403)
-            # req.session.set_expiry(1800)
-            # login(req, user=user)
             refresh = RefreshToken.for_user(user)
             response = {
                 "message": "Berhasil Login",
@@ -102,22 +81,36 @@ class TransactionView(APIView):
 
     def get(self, request):
         name = request.api_key_name
-        dataTransaction = Transaction.objects.select_related('category').order_by('created_at').filter(created_at__date=timezone.now().date(), user=name)
-        if dataTransaction != None and dataTransaction.exists():
-            dataJson = []
-            for d in dataTransaction:
-                dataJson.append({'transactionDate': d.created_at.strftime("%d %B %Y"), 'description': d.description,
-                                'category': d.category.name, 'amount': d.amount})
-            return JsonResponse(dataJson, safe=False)
-        return JsonResponse({"message": "Data tidak ditemukan dengan nama pengguna: " + name + ", Mohon menggunakan token yang sudah punya data atau membuat data baru dengan token ini"}, status=404)
+        logger.info(f"Data params we received is {request.query_params.get('dataRange')}")
+        dataRange = request.query_params.get('dataRange')
+        if dataRange is None or dataRange == "":
+            logger.warning("Query param 'dataRange' is missing or empty")
+            return JsonResponse({"message": "Please input a valid query param"}, status=400)
+        dataTransaction = None
+        if dataRange is not None and dataRange != "":
+            match (dataRange.lower()):
+                case 'today':
+                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name, created_at__date=timezone.now().date()).order_by('-created_at'), many=True).data
+                case 'weekly':
+                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name, created_at__date__gte=timezone.now().date() - timedelta(days=7)).order_by('-created_at'), many=True).data
+                case 'monthly':
+                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name, created_at__date__gte=timezone.now().date() - timedelta(days=30)).order_by('-created_at'), many=True).data
+                case 'all':
+                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name).order_by('-created_at'), many=True).data
+                case _:
+                    return JsonResponse({"message": "Please input a valid data range"}, status=400)
+        if dataTransaction != None and dataTransaction != "":
+            return JsonResponse(dataTransaction, safe=False, status=200)
+        logger.warning(f"Data with name {name} not found")
+        return JsonResponse({"message": "Data with this name: " + name + " is not found, Please use another token"}, status=404)
 
     def post(self, req):
         try:
             name = req.api_key_name
             obj = req.data.copy()
-            print(f"Data yang diterima dari {req.api_key_name}")
+            logger.info(f"Data we received from {req.api_key_name}")
             newdata = {**obj, 'user': name}
-            serializer = TransactionSerializer(data=newdata)
+            serializer = RequestTransactionSerializer(data=newdata)
             if serializer.is_valid():
                 serializer.save()
                 return JsonResponse({
@@ -127,10 +120,10 @@ class TransactionView(APIView):
                 }, status=201)
             return Response(serializer.errors, status=400)
         except Exception as e:
-            print (f"Data gagal di save dengan error {e}")
-            return HttpResponse(f"Data gagal di save dengan error {e}")
-        
-        
+            logger.error(f"Data failed to save with error {e}")
+            return HttpResponse(f"Data failed to save with error {e}", status=500)
+
+
 class CategoryView(APIView):
     def get(self, request):
         data = Category.objects.values_list().order_by('name').filter(is_active=True)
@@ -143,7 +136,7 @@ class Home(APIView):
     ermission_classes = [HasApiKeyWithName]
 
     def get(self, request):
-        print(request.api_key_name)
+        logger.info(f"Accessing home page for API key: {request.api_key_name}")
         content = {'message': 'Hello, World!',
                    'firstName': request.api_key_name}
         return Response(content)
