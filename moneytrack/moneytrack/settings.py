@@ -114,14 +114,14 @@ WSGI_APPLICATION = "moneytrack.wsgi.application"
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default=(
-            os.environ.get('DATABASE_URL')
-            or os.environ.get('SUPABASE_DB_URL')
-        ),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+     'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres.atekkvisjjlntzgnztyk',
+        'PASSWORD': os.environ.get('PASSWORD_SUPABASE_DB_URL'),
+        'HOST': 'aws-1-ap-northeast-2.pooler.supabase.com',
+        'PORT': '5432',
+    }
 }
 
 
