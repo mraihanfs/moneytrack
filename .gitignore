@@ -19,6 +19,8 @@ ngrok.exe
 db.sqlite3
 media/
 staticfiles/
+moneytrack/**/migrations/
 
 # Environment
 .env
+moneytrack/.env
