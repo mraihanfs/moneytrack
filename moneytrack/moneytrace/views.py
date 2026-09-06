@@ -133,7 +133,6 @@ class CategoryView(APIView):
         return JsonResponse(dataJson, safe=False)
         
 class Home(APIView):
-    ermission_classes = [HasApiKeyWithName]
 
     def get(self, request):
         logger.info(f"Accessing home page for API key: {request.api_key_name}")
