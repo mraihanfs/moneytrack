@@ -10,7 +10,7 @@ from django.contrib.sessions.models import Session
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .core.permission import HasApiKeyWithName
+from .core.permission import HasApiKeyWithPrefix
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import MyTokenObtainPairSerializer, RequestTransactionSerializer, ResponseTransactionGroupSerializer, ResponseTransactionSerializer, QueryParamGetTransactionSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -77,10 +77,10 @@ class LogoutView(View):
 
 
 class TransactionView(APIView):
-    permission_classes = [HasApiKeyWithName]
+    permission_classes = [HasApiKeyWithPrefix]
 
     def get(self, request):
-        name = request.api_key_name
+        name = request.api_key_prefix
         
         serializer = QueryParamGetTransactionSerializer(data=request.query_params)
         if not serializer.is_valid():
@@ -115,7 +115,7 @@ class TransactionView(APIView):
                         dataResponse = ResponseTransactionSerializer(dataTransaction, many=True).data
                     case _:
                         return JsonResponse({"message": "Please input a valid view data"}, status=400)
-            logger.debug(f"Data we received from {request.api_key_name} is {dataTransaction}")
+            logger.debug(f"Data we received from {request.api_key_prefix} is {dataTransaction}")
         if dataResponse != None and dataResponse != "":
             return JsonResponse(dataResponse, safe=False, status=200)
         logger.warning(f"Data with name {name} not found")
@@ -123,9 +123,9 @@ class TransactionView(APIView):
 
     def post(self, req):
         try:
-            name = req.api_key_name
+            name = req.api_key_prefix
             obj = req.data.copy()
-            logger.info(f"Data we received from {req.api_key_name}")
+            logger.info(f"Data we received from {req.api_key_prefix}")
             newdata = {**obj, 'user': name}
             serializer = RequestTransactionSerializer(data=newdata)
             if serializer.is_valid():

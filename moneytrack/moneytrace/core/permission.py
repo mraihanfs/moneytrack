@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-class HasApiKeyWithName(HasAPIKey):
+class HasApiKeyWithPrefix(HasAPIKey):
     def has_permission(self, request, view):
         is_valid = super().has_permission(request, view)
         if is_valid:
@@ -13,7 +13,7 @@ class HasApiKeyWithName(HasAPIKey):
                 try:
                     api_key_instance = APIKey.objects.get_from_key(api_key)
                     if api_key_instance:
-                        request.api_key_name = api_key_instance.name
+                        request.api_key_prefix = api_key_instance.prefix
                         return True
                 except APIKey.DoesNotExist:
                     return False
