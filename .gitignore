@@ -24,3 +24,6 @@ moneytrack/**/migrations/
 # Environment
 .env
 moneytrack/.env
+
+# Supabase folders anywhere in the project
+**/supabase/
