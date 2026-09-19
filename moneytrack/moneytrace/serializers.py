@@ -13,7 +13,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     
 class RequestTransactionSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
-        queryset=Category.objects.all(),
+        queryset=Category.objects.filter(is_active=True),
         slug_field='name'
     )
     
@@ -24,10 +24,19 @@ class RequestTransactionSerializer(serializers.ModelSerializer):
         
 class ResponseTransactionSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
-        read_only=True,
+        queryset=Category.objects.filter(is_active=True),
         slug_field='name'
     )
     
     class Meta:
         model = Transaction
         fields = ['amount', 'description', 'category', 'user', 'created_at', 'amount']
+        
+class QueryParamGetTransactionSerializer(serializers.Serializer):
+    dataRange = serializers.ChoiceField(choices=['today', 'weekly', 'monthly', 'all'], required=True)
+    viewData = serializers.ChoiceField(choices=['group', 'all'], required=True)
+    
+
+class ResponseTransactionGroupSerializer(serializers.Serializer):
+    category = serializers.CharField(source='category__name')
+    total_amount = serializers.DecimalField(max_digits=12, decimal_places=2)

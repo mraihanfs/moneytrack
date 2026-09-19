@@ -1,18 +1,18 @@
 import logging
 from datetime import timedelta
+from django.db.models.aggregates import Sum
 from django.http import HttpResponse, JsonResponse
 from .models import Category, Transaction
 from django.views.decorators.http import require_http_methods
 from django.views import View, generic
-from .validation import validate_transaction_type, validate_is_number
-from django.contrib.auth import authenticate,  logout
+from django.contrib.auth import authenticate,  logout, models
 from django.contrib.sessions.models import Session
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .core.permission import HasApiKeyWithName
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import MyTokenObtainPairSerializer, RequestTransactionSerializer, ResponseTransactionSerializer
+from .serializers import MyTokenObtainPairSerializer, RequestTransactionSerializer, ResponseTransactionGroupSerializer, ResponseTransactionSerializer, QueryParamGetTransactionSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
@@ -81,26 +81,43 @@ class TransactionView(APIView):
 
     def get(self, request):
         name = request.api_key_name
-        logger.info(f"Data params we received is {request.query_params.get('dataRange')}")
-        dataRange = request.query_params.get('dataRange')
-        if dataRange is None or dataRange == "":
-            logger.warning("Query param 'dataRange' is missing or empty")
-            return JsonResponse({"message": "Please input a valid query param"}, status=400)
-        dataTransaction = None
+        
+        serializer = QueryParamGetTransactionSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            logger.warning(f"Invalid query params: {serializer.errors}")
+            return JsonResponse({"message": "Invalid query params", "errors": serializer.errors}, status=400)
+        logger.debug(f"Data params we received is {request.query_params.get('dataRange')} and {request.query_params.get('viewData')}")
+        dataRange = serializer.validated_data.get('dataRange')
+        viewData = serializer.validated_data.get('viewData')
+        rangeData = None
+        dataResponse = None
         if dataRange is not None and dataRange != "":
             match (dataRange.lower()):
                 case 'today':
-                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name, created_at__date=timezone.now().date()).order_by('-created_at'), many=True).data
+                    rangeDate = timezone.now().date()
                 case 'weekly':
-                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name, created_at__date__gte=timezone.now().date() - timedelta(days=7)).order_by('-created_at'), many=True).data
+                    rangeDate = timezone.now().date() - timedelta(days=7)
                 case 'monthly':
-                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name, created_at__date__gte=timezone.now().date() - timedelta(days=30)).order_by('-created_at'), many=True).data
+                    rangeDate = timezone.now().date() - timedelta(days=30)
                 case 'all':
-                    dataTransaction = ResponseTransactionSerializer(Transaction.objects.filter(user=name).order_by('-created_at'), many=True).data
+                    rangeDate = timezone.now().date() - timedelta(days=365*100)
                 case _:
                     return JsonResponse({"message": "Please input a valid data range"}, status=400)
-        if dataTransaction != None and dataTransaction != "":
-            return JsonResponse(dataTransaction, safe=False, status=200)
+            if viewData is not None and viewData != "":
+                match (viewData.lower()):
+                    case 'group':
+                        dataTransaction = Transaction.objects.filter(user=name, created_at__date__gte=rangeDate).values('category__name').annotate(total_amount=Sum('amount'))
+                        logger.debug(f"Data from query is {dataTransaction}")
+                        dataResponse = ResponseTransactionGroupSerializer(dataTransaction, many=True).data
+                    case 'all':
+                        dataTransaction = Transaction.objects.filter(user=name, created_at__date__gte=rangeDate).order_by('-created_at')
+                        logger.debug(f"Data from query is {dataTransaction}")
+                        dataResponse = ResponseTransactionSerializer(dataTransaction, many=True).data
+                    case _:
+                        return JsonResponse({"message": "Please input a valid view data"}, status=400)
+            logger.debug(f"Data we received from {request.api_key_name} is {dataTransaction}")
+        if dataResponse != None and dataResponse != "":
+            return JsonResponse(dataResponse, safe=False, status=200)
         logger.warning(f"Data with name {name} not found")
         return JsonResponse({"message": "Data with this name: " + name + " is not found, Please use another token"}, status=404)
 
