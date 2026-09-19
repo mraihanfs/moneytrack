@@ -142,6 +142,8 @@ class TransactionView(APIView):
 
 
 class CategoryView(APIView):
+    permission_classes = [HasApiKeyWithPrefix]
+    
     def get(self, request):
         data = Category.objects.values_list().order_by('name').filter(is_active=True)
         dataJson = []
